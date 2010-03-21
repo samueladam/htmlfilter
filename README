@@ -1,0 +1,7 @@
+About
+-----
+
+The filter parses the code for < and > characters. It tries to correct malformed tags and close them.
+
+Use it with a WYSIWYG editor on the client side.
+
