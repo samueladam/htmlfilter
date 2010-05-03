@@ -1,5 +1,6 @@
 import re
 
+# allowed tags and attributes
 TAGS = {
     'a': ('href', 'name', 'target'),
     'p': ('style',),
@@ -40,7 +41,7 @@ OVERLAPPING = ('blockquote', 'span',)
 
 # example to filter on "href" attribute of "a" tag
 def a_href(data):
-    for pattern in ('http://', 'ftp://', 'mailto:'):
+    for pattern in ('http://', 'ftp://', 'mailto:', '#'):
         if data.startswith(pattern):
             return data
     return u'#%s' % data

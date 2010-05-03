@@ -8,51 +8,53 @@ attrs_re = re.compile(r"""\s*(\w+)\s*=\s*(["'])(.*?)(?<!\\)\2""", re.DOTALL)
 
 class HTMLFilter:
     """Simple HTML white list filter.
-    
+
     Usage:
         hf = HTMLFilter()
         filtered_html = hf.filter(html)
-    
+
     The filter parses the code for < and > characters.
     It tries to correct malformed tags and close them.
-    
+
     Use it with a WYSIWYG editor on the client side
     to convert user's < and > inputs into &lt; and &gt;
-    
+
     For the tough stuff, prefer BeautifulSoup.
-    
+
     """
-    
+
     def __init__(self, rules=rules):
         # default config
+        self.rules = rules
+
         # other tags and attributes are removed
-        self.allowed = rules.TAGS
-        
+        self.allowed = hasattr(rules, 'TAGS') and rules.TAGS or {}
+
         # <tag />
-        self.non_closing = rules.NON_CLOSING
-        
+        self.non_closing = hasattr(rules, 'NON_CLOSING') and rules.NON_CLOSING or []
+
         # <blockquote><blockquote></blockquote></blockquote>
-        self.overlapping = rules.OVERLAPPING
-        
+        self.overlapping = hasattr(rules, 'OVERLAPPING') and rules.OVERLAPPING or []
+
     def filter(self, data):
         # reset
-        filtered_data = self.filtered_data = []
-        open_tags = self.open_tags = defaultdict(int)
+        self.filtered_data = filtered_data = []
+        self.open_tags = open_tags = defaultdict(int)
         handle_data = self.handle_data
 
         chunks = data.split('<')
         filtered_data.append(chunks.pop(0))
-        
+
         for chunk in chunks:
             handle_data(chunk)
-            
+
         # close open tags
         for tag, times in open_tags.iteritems():
-            for i in range(times):
+            for i in xrange(times):
                 filtered_data.extend(['</', tag, '>'])
-                
+
         return ''.join(self.filtered_data)
-        
+
     def handle_data(self, chunk):
         if chunk:
             if '>' in chunk:
@@ -60,10 +62,10 @@ class HTMLFilter:
             else:
                 # the tag didn't end
                 tagdata, text = chunk, ''
-                
+
             self.handle_tag(tagdata)
             self.filtered_data.append(text)
-        
+
     def handle_tag(self, tagdata):
         attrs = tagdata.strip().split(' ', 1)
         tag = attrs.pop(0).lower()
@@ -75,7 +77,7 @@ class HTMLFilter:
                     # find the attributes
                     attrs = [(a[0], a[2]) for a in attrs_re.findall(attrs[0])]
                 self.handle_starttag(tag, attrs)
-        
+
     def handle_starttag(self, tag, attrs):
         if tag in self.allowed:
             # open tags check
@@ -86,7 +88,7 @@ class HTMLFilter:
                     self.handle_endtag(tag)
                 self.open_tags[tag] += 1
                 tag_tail = ''
-                
+
             # filter attributes
             filtered_attrs = {}
             for attr, val in attrs:
@@ -96,7 +98,7 @@ class HTMLFilter:
                         val = getattr(self.rules, filterfn)(val)
                     if val:
                         filtered_attrs[attr] = val
-                    
+
             self.filtered_data.extend(
                                 ['<',
                                  tag,
@@ -107,9 +109,9 @@ class HTMLFilter:
                                  tag_tail,
                                  '>'
                                  ])
-    
+
     def handle_endtag(self, tag):
-        if tag in self.allowed and self.open_tags[tag] > 0 and tag not in\
-        self.non_closing:
+        if tag in self.allowed and self.open_tags[tag] > 0 \
+           and tag not in self.non_closing:
             self.filtered_data.extend(['</', tag, '>'])
             self.open_tags[tag] -= 1
